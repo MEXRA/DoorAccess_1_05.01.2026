@@ -108,7 +108,7 @@ namespace DoorAccess_1
             this.dtpAccessTimeDate.TabIndex = 5;
             this.dtpAccessTimeDate.ValueChanged += new System.EventHandler(this.dtpAccessTimeDate_ValueChanged);
             // 
-            // btnAdd
+            // btnAdd tamamamamamamamaamam
             // 
             this.btnAdd.Location = new System.Drawing.Point(81, 200);
             this.btnAdd.Name = "btnAdd";
