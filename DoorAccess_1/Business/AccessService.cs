@@ -26,8 +26,9 @@ namespace DoorAccess_1.Business
 
             if (!rec.DoorId.HasValue)
                 throw new Exception("Kapı seçmelisin.");
-
+           
             _accessRepo.Insert(rec);
+            
         }
 
         public AccessRecord SearchActiveById(int recordId)
@@ -44,6 +45,8 @@ namespace DoorAccess_1.Business
 
         public bool DeleteSoft(int recordId)
             => _accessRepo.SoftDelete(recordId);
+
+
     }
 }
 

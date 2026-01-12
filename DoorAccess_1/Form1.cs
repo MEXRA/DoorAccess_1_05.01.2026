@@ -1,31 +1,100 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows.Forms;
 using DoorAccess_1.Business;
 using DoorAccess_1.DataAccess;
 using DoorAccess_1.Models;
+using System.Diagnostics;
+
+
 
 namespace DoorAccess_1
 {
+
     public partial class Form1 : Form
     {
-        // UI tarafında connectionString sadece bir kere set edilecek
+
         private readonly string connectionString =
             @"Server=(localdb)\VerbTables;Database=Verbs;Trusted_Connection=True;";
 
-        // UI sadece service çağırır
-        private readonly AccessService _service = new AccessService();
+        private AccessService _service;
+        private AppRole _role;
 
+
+        private bool IsDesignTime =>
+    LicenseManager.UsageMode == LicenseUsageMode.Designtime
+    || (this.Site?.DesignMode ?? false)
+    || Process.GetCurrentProcess().ProcessName.Equals("devenv", StringComparison.OrdinalIgnoreCase);
+
+
+       
         public Form1()
         {
             InitializeComponent();
 
-            // DAL connection string'i burada ayarlıyoruz (Form içinde SQL YOK)
+            if (IsDesignTime) return;
+
+            _role = AppRole.User;
+           
+        }
+        private void Form1_Shown(object sender, EventArgs e)
+        {
+            if (IsDesignTime) return;
+
             Db.ConnectionString = connectionString;
+            _service = new AccessService();
+
+            ApplyRole();
+            LoadDoors();
+        }
+
+
+        //  Runtime
+        public Form1(AppRole role) : this()
+        {
+            if (IsDesignTime) return;
+            _role = role;
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            LoadDoors();
+            if (IsDesignTime) return;
+           
+        }
+
+
+        private void ApplyRole()
+        {
+            bool isAdmin = _role == AppRole.Admin;
+
+           
+
+            // User da kayıt ekleyebilsin
+            btnAdd.Enabled = true;
+
+            // Sadece admin 
+            btnList.Enabled = isAdmin;
+            btnSearch.Enabled = isAdmin;
+            btnUpdate.Enabled = isAdmin;
+            btnDelete.Enabled = isAdmin;
+            chkShowDeleted.Enabled = isAdmin;
+
+            // admin alanlarını gizle
+            if (!isAdmin)
+            {
+                btnList.Visible = false;
+                btnSearch.Visible = false;
+                btnUpdate.Visible = false;
+                btnDelete.Visible = false;
+                chkShowDeleted.Visible = false;
+
+                txtSearchRecordID.Visible = false;
+                dgvRecords.Visible = false;
+
+                // sende label isimleri label4/label5 ise bunlar çalışır.
+                if (label4 != null) label4.Visible = false;
+                if (label5 != null) label5.Visible = false;
+            }
         }
 
         private void LoadDoors()
@@ -37,8 +106,7 @@ namespace DoorAccess_1
                 cmbDoor.DisplayMember = "DoorName";
                 cmbDoor.ValueMember = "DoorId";
                 cmbDoor.DataSource = doors;
-
-                cmbDoor.SelectedIndex = -1; // başta seçili olmasın
+                cmbDoor.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
@@ -60,13 +128,10 @@ namespace DoorAccess_1
 
                 _service.AddRecord(rec);
                 MessageBox.Show("Record added successfully.");
-
-                // istersen listeyi otomatik yenile
-                // RefreshList();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show("Add error: " + ex.Message);
             }
         }
 
@@ -81,10 +146,9 @@ namespace DoorAccess_1
             try
             {
                 var rec = _service.SearchActiveById(id);
-
                 if (rec == null)
                 {
-                    MessageBox.Show("No record found. ❌");
+                    MessageBox.Show("No record found.");
                     return;
                 }
 
@@ -93,10 +157,8 @@ namespace DoorAccess_1
                 txtPersonName.Text = rec.PersonName;
                 dtpAccessTimeDate.Value = rec.AccesTimeDate;
 
-                if (rec.DoorId.HasValue)
-                    cmbDoor.SelectedValue = rec.DoorId.Value;
-                else
-                    cmbDoor.SelectedIndex = -1;
+                if (rec.DoorId.HasValue) cmbDoor.SelectedValue = rec.DoorId.Value;
+                else cmbDoor.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
@@ -108,7 +170,7 @@ namespace DoorAccess_1
         {
             if (!int.TryParse(txtRecordID.Text, out int recordId))
             {
-                MessageBox.Show("Önce bir kayıt bul (Search) sonra Update yap.");
+                MessageBox.Show("Önce Search ile kayıt bul, sonra Update.");
                 return;
             }
 
@@ -169,22 +231,20 @@ namespace DoorAccess_1
             try
             {
                 bool ok = _service.DeleteSoft(recordId);
-
-                if (ok)
-                {
-                    MessageBox.Show("Record deleted (soft delete).");
-
-                    txtRecordID.Clear();
-                    txtPersonID.Clear();
-                    txtPersonName.Clear();
-                    cmbDoor.SelectedIndex = -1;
-
-                    RefreshList();
-                }
-                else
+                if (!ok)
                 {
                     MessageBox.Show("Record not found.");
+                    return;
                 }
+
+                MessageBox.Show("Record deleted (soft delete).");
+
+                txtRecordID.Clear();
+                txtPersonID.Clear();
+                txtPersonName.Clear();
+                cmbDoor.SelectedIndex = -1;
+
+                RefreshList();
             }
             catch (Exception ex)
             {
@@ -192,7 +252,7 @@ namespace DoorAccess_1
             }
         }
 
-        // Bunlar designer’ın bağladığı eventler — boş kalsa da sorun yok
+        // Designer eventleri (boş olabilir)
         private void dtpAccessTimeDate_ValueChanged(object sender, EventArgs e) { }
         private void label1_Click(object sender, EventArgs e) { }
         private void label4_Click(object sender, EventArgs e) { }

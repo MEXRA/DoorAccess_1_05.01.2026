@@ -8,15 +8,18 @@ namespace DoorAccess_1
 {
     internal static class Program
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
+        private static object AppRole;
+
         [STAThread]
         static void Main()
         {
+
+            Application.Run(new StartForm());
+
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+
         }
     }
 }
